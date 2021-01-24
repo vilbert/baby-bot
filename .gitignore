@@ -1,0 +1,12 @@
+# Virtual Environment
+.venv
+
+# IDE settings
+.vscode
+
+# Environment Variables
+.env.debug
+.env.production
+
+# Music Files
+music_files/*
