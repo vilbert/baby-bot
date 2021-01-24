@@ -9,4 +9,4 @@
 .env.production
 
 # Music Files
-music_files/*
+music_files/*.webm
