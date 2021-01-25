@@ -62,8 +62,10 @@ class Music(commands.Cog):
         self.queue = []
 
     def _check_queue(self, error=None):
-        if self.queue is not None and len(self.queue) > 0:
-            self._play(self.queue.pop(0))
+        if self.voice and self.voice.is_connected():
+            self.voice.stop()
+            if self.queue is not None and len(self.queue) > 0:
+                self._play(self.queue.pop(0))
 
     def _play(self, song_url: str):
         id, title = self._extract_info(song_url=song_url, download=False)
@@ -133,16 +135,18 @@ class Music(commands.Cog):
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=12, check=check)
 
+                await reaction.message.delete()
+
                 if reaction.emoji == emojis.encode(":one:"):
                     song_url = search_results[0]['link']
                 elif reaction.emoji == emojis.encode(":two:"):
-                    song_url = search_results[0]['link']
+                    song_url = search_results[1]['link']
                 elif reaction.emoji == emojis.encode(":three:"):
-                    song_url = search_results[0]['link']
+                    song_url = search_results[2]['link']
                 elif reaction.emoji == emojis.encode(":four:"):
-                    song_url = search_results[0]['link']
+                    song_url = search_results[3]['link']
                 elif reaction.emoji == emojis.encode(":five:"):
-                    song_url = search_results[0]['link']
+                    song_url = search_results[4]['link']
 
                 id, title = self._extract_info(song_url=song_url, download=True)
 
@@ -154,8 +158,6 @@ class Music(commands.Cog):
                     await self.join(ctx)
                     self.queue.append(song_url)
                     self._check_queue()
-
-                await reaction.message.delete()
             except TimeoutError:
                 await msg.delete()
 
@@ -218,20 +220,19 @@ class Music(commands.Cog):
 
         if self.voice and self.voice.is_connected():
             if self.voice.is_playing() or self.voice.is_paused():
-                self.voice.stop()
-                if index is not None and len(self.queue) > 0:
-                    for i, q in enumerate(self.queue, start=1):
-                        if i == index:
-                            break
-                        else:
-                            self.queue.pop(0)
+                if len(self.queue) > 0:
+                    if index is not None and index > 0:
+                        for i, q in enumerate(self.queue, start=0):
+                            if i == index:
+                                break
+                        self.queue = self.queue[index-1:]
+                    self.voice.stop()
+                    await self.ctx.send(f'Skipping song.')
                 else:
                     await self.ctx.send(f'There are no more songs in queue.')
                     return
-                self._check_queue()
             else:
                 await self.ctx.send(f'Currently not playing any songs.')
-            await self.ctx.send(f'Skipping song.')
         else:
             await self.ctx.send(f'Currently not connected to any voice channel.')
 
@@ -271,6 +272,7 @@ class Music(commands.Cog):
                     # # END VOLUME LOOP
                     # vol = self.voice.source.volume * 100
                     # await ctx.send(f'Setting volume to: {vol}.')
+                    self.voice.source.volume = new_volume / 100
                     await self.ctx.send(f'Setting volume to: {new_volume}.')
                 else:
                     await self.ctx.send('Volume must be between 1 and 100.')
@@ -295,9 +297,9 @@ class Music(commands.Cog):
                             # Limit print to 8 entries for readability.
                             if i == 8:
                                 break
-                        await self.ctx.send(f'```Now Playing: {self.now_playing}\n\nQueue:{queue_text}```')
+                        await self.ctx.send(f'```Now Playing:\n{self.now_playing}\n\nQueue:{queue_text}```')
                     else:
-                        await self.ctx.send(f'```Now Playing: {self.now_playing}\n\nQueue is empty.```')
+                        await self.ctx.send(f'```Now Playing:\n{self.now_playing}\n\nQueue is empty.```')
                 else:
                     await self.ctx.send(f'There are no more songs in queue.')
             else:
